@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-# SPDX-License-Identifier: BSD-3-Clause-Clear
+# SPDX-License-Identifier: BSD-3-Clause
  
-UTILS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTILS_DIR="$(cd "$(dirname "$0")" && pwd)"
 SEARCH="$UTILS_DIR"
 INIT_ENV=""
 
@@ -25,13 +25,11 @@ if [ -z "$__INIT_ENV_LOADED" ]; then
     . "$INIT_ENV"
 fi
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC1091
 . "$TOOLS/functestlib.sh"
 
-export VM="hk-vm"
-export VM_NAME="$VM"
+export VM_NAME="hk-vm"
 export XML_FILE="/var/gunyah/vm.xml"
-export NONRT_IMAGE_DIR="$TOOLS/nonrt_Image"
 
 vm_clean() {
     log_info "Cleaning up existing VM state for: $VM_NAME"
@@ -53,8 +51,7 @@ vm_define() {
         return 1
     fi
 
-    virsh define "$XML_FILE"
-    if [ $? -ne 0 ]; then
+    if ! virsh define "$XML_FILE"; then
         log_fail "Failed to define VM."
         return 1
     fi
@@ -63,8 +60,7 @@ vm_define() {
 
 vm_start() {
     log_info "Starting VM: $VM_NAME"
-    virsh start "$VM_NAME"
-    if [ $? -ne 0 ]; then
+    if ! virsh start "$VM_NAME"; then
         log_fail "Failed to start VM."
         return 1
     fi
@@ -74,16 +70,14 @@ vm_start() {
 }
 
 check_vm_state() {
- 
-    local vm_name=$1
-    local expected_state=$2
-    local current_state
+    target_vm="$1"
+    expected_state="$2"
     
-    log_info "Verifying VM state for '$vm_name'... Expecting: $expected_state"
+    log_info "Verifying VM state for '$target_vm'... Expecting: $expected_state"
     
-    current_state=$(virsh domstate "$vm_name" 2>/dev/null | xargs)
+    current_state=$(virsh domstate "$target_vm" 2>/dev/null | xargs)
     
-    if [ "$current_state" == "$expected_state" ]; then
+    if [ "$current_state" = "$expected_state" ]; then
         log_info "SUCCESS: VM is in '$current_state' state."
         return 0
     else

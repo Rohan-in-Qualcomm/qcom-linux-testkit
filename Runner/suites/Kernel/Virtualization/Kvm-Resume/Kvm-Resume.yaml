@@ -1,7 +1,7 @@
 metadata:
-  name: kvm-resume
+  name: Kvm-Resume
   format: "Lava-Test Test Definition 1.0"
-  description: "Resume a paused Gunyah KVM Virtual Machine"
+  description: "This test validates the resume (unpause) functionality for KVM virtual machines managed via `virsh`."
   os:
     - linux
   scope:
@@ -9,7 +9,7 @@ metadata:
 
 run:
   steps:
-    - REPO_PATH=$PWD
-    - cd Runner/suites/Kernel/Virtualization/Kvm-Resume
+    - REPO_PATH=$PWD || true
+    - cd Runner/suites/Kernel/Virtualization/Kvm-Resume || true
     - ./run.sh || true
     - $REPO_PATH/Runner/utils/send-to-lava.sh Kvm-Resume.res || true

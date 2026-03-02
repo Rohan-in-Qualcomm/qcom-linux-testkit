@@ -1,7 +1,7 @@
 metadata:
-  name: kvm-suspend
+  name: Kvm-Suspend
   format: "Lava-Test Test Definition 1.0"
-  description: "Suspend a running Gunyah KVM Virtual Machine"
+  description: "This test validates the suspend (pause) functionality for KVM virtual machines managed via `virsh`."
   os:
     - linux
   scope:
@@ -9,7 +9,7 @@ metadata:
 
 run:
   steps:
-    - REPO_PATH=$PWD
-    - cd Runner/suites/Kernel/Virtualization/Kvm-Suspend
+    - REPO_PATH=$PWD || true
+    - cd Runner/suites/Kernel/Virtualization/Kvm-Suspend || true
     - ./run.sh || true
     - $REPO_PATH/Runner/utils/send-to-lava.sh Kvm-Suspend.res || true

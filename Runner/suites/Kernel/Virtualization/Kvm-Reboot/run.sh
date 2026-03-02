@@ -1,58 +1,73 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-# SPDX-License-Identifier: BSD-3-Clause-Clear
+# SPDX-License-Identifier: BSD-3-Clause
 
-# Robustly find and source init_env
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SEARCH_PATH="$SCRIPT_DIR"
-LIB_PATH=""
-while [ "$SEARCH_PATH" != "/" ]; do
-    if [ -f "$SEARCH_PATH/utils/kvm_common.sh" ]; then
-        LIB_PATH="$SEARCH_PATH/utils/kvm_common.sh"
+INIT_ENV=""
+SEARCH="$SCRIPT_DIR"
+while [ "$SEARCH" != "/" ]; do
+    if [ -f "$SEARCH/init_env" ]; then
+        INIT_ENV="$SEARCH/init_env"
         break
     fi
-    SEARCH_PATH=$(dirname "$SEARCH_PATH")
+    SEARCH=$(dirname "$SEARCH")
 done
 
-if [ -f "$LIB_PATH" ]; then
-    # shellcheck disable=SC1090
-    . "$LIB_PATH"
-else
-    echo "[ERROR] Lib not found"
+if [ -z "$INIT_ENV" ]; then
+    echo "[ERROR] Could not find init_env" >&2
     exit 1
 fi
 
+if [ -z "$__INIT_ENV_LOADED" ]; then
+    # shellcheck disable=SC1090
+    . "$INIT_ENV"
+fi
+
+# shellcheck disable=SC1090,SC1091
+. "$TOOLS/functestlib.sh"
+# shellcheck disable=SC1090,SC1091
+. "$TOOLS/kvm_common.sh"
+
 TESTNAME="Kvm-Reboot"
-RES_FILE="${TESTNAME}.res"
-rm -f "$RES_FILE"
+if command -v find_test_case_by_name >/dev/null 2>&1; then
+    test_path=$(find_test_case_by_name "$TESTNAME")
+    cd "$test_path" || exit 1
+else
+    cd "$SCRIPT_DIR" || exit 1
+fi
 
-# Clean up old stdout logs from previous runs
-rm -f *_stdout_*.log
-
-log_info "----------- KVM Reboot -----------"
+res_file="./$TESTNAME.res"
+log_info "-----------------------------------------------------------------------------------------"
+log_info "-------------------Starting $TESTNAME Testcase----------------------------"
 
 if virsh list --all | grep -q -w "$VM_NAME"; then
     log_info "Existing VM instance found. Cleaning up..."
     vm_clean
 fi
 
-vm_define && vm_start
-if [ $? -ne 0 ]; then echo "$TESTNAME FAIL" > "$RES_FILE"; exit 1; fi
+# Fixes SC2181: Evaluating commands directly instead of checking $?
+if ! vm_define || ! vm_start; then
+    echo "$TESTNAME FAIL" > "$res_file"
+    exit 1
+fi
 
 # Test: Reboot
 log_info "Rebooting $VM_NAME"
-virsh reboot "$VM_NAME"
+if ! virsh reboot "$VM_NAME"; then
+    log_fail "Failed to issue reboot command."
+    echo "$TESTNAME FAIL" > "$res_file"
+    exit 1
+fi
 sleep 5
 
-# Verify Running
-check_vm_state "$VM_NAME" "running"
-if [ $? -eq 0 ]; then
+# Verify Running (Fixes SC2181: Evaluating command directly)
+if check_vm_state "$VM_NAME" "running"; then
     log_pass "VM rebooted successfully."
-    echo "$TESTNAME PASS" > "$RES_FILE"
+    echo "$TESTNAME PASS" > "$res_file"
 else
     log_fail "VM not running after reboot."
-    echo "$TESTNAME FAIL" > "$RES_FILE"
+    echo "$TESTNAME FAIL" > "$res_file"
 fi
 
 # Cleanup
